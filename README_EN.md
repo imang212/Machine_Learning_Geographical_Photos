@@ -37,8 +37,8 @@ clear_primary, clear_cloudy_primary, etc.)
     images
 
 ## Technologies
--   Python 3.11\
--   PyTorch\
+-   Python 3.11
+-   PyTorch
 -   ResNet50
 
 ## Data Loading for the Training Model
@@ -76,9 +76,9 @@ training and testing images, and loaded the CSV files.
 
 ## Exploring Dataset Information
 I displayed:
--   Number of training and test records\
--   Table structure and column information\
--   Null values\
+-   Number of training and test records
+-   Table structure and column information
+-   Null values
 -   Distribution of tags
 
 ```python
@@ -116,15 +116,16 @@ the distribution using a graph.
 ![image](https://github.com/user-attachments/assets/cce47905-bde1-4714-a80e-32a0beb21b59)
 
 ### Distribution graph of tags
-
 ![tags_distribution](https://github.com/user-attachments/assets/652ff75c-a222-46e7-a43c-29773f624a26)
 
 # Model Training and Classifier Creation
 ## One-Hot Encoding for Tags
-To train the model, tags must be converted into vectors.\
+To train the model, tags must be converted into vectors.
+
 Each image is represented by a 17-dimensional float vector where:
--   1.0 = tag present\
+-   1.0 = tag present
 -   0.0 = tag not present
+
 ```python
 # Convert tag strings into one-hot encoded vectors
 def get_tag_map(tags):
@@ -135,20 +136,19 @@ def get_tag_map(tags):
         if tag in unique_tags:
             labels[unique_tags.index(tag)] = 1
     return labels
-
 # Add encoded vectors to dataframe
 train_df['tag_vector'] = train_df['tags'].apply(get_tag_map)
 print(train_df.head())
 ```
-![image](https://github.com/user-attachments/assets/3c2fc5bc-d3e0-4f06-ae01-ac8fb5161937)
-
 This format is required for multi-label classification in PyTorch.
+
+![image](https://github.com/user-attachments/assets/3c2fc5bc-d3e0-4f06-ae01-ac8fb5161937)
 
 ## Creating a Custom PyTorch Dataset Class
 I created a custom `PlanetDataset` class that:
--   Loads images\
--   Applies transformations\
--   Converts tag vectors into FloatTensor format\
+-   Loads images
+-   Applies transformations
+-   Converts tag vectors into FloatTensor format
 -   Returns image and label vectors
 
 ```python
@@ -171,14 +171,14 @@ class PlanetDataset(Dataset):
         tag_vector = torch.FloatTensor(self.dataframe.iloc[idx]['tag_vector'])
         return image, tag_vector
 ```
-
-## Image Transformations
+## Image Transformations define
 Defined separate transformations for training and validation data:
--   Resize to 224x224\
--   Random horizontal and vertical flips\
--   Random rotation\
--   Color jitter (brightness, contrast, saturation, hue)\
+-   Resize to 224x224
+-   Random horizontal and vertical flips
+-   Random rotation
+-   Color jitter (brightness, contrast, saturation, hue)
 -   Normalization using ImageNet mean and standard deviation
+
 ```python
 train_transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -199,7 +199,7 @@ val_transform = transforms.Compose([
 
 ## Train / Validation Split
 Split dataset into:
--   80% training\
+-   80% training
 -   20% validation
 
 ```python
@@ -209,19 +209,20 @@ print(f"Count of validation samples: {len(valid_data)}")
 # Datasets create
 train_dataset = PlanetDataset(train_data, TRAIN_DIR, transform=train_transform)
 valid_dataset = PlanetDataset(valid_data, TRAIN_DIR, transform=val_transform)
-```   
+```
 
 Created PyTorch datasets and DataLoaders with batch size 32.
 
 # Using a Pretrained Model
 Created a multi-label classifier based on pretrained ResNet50:
--   First layers partially frozen\
--   Replaced final fully connected layer\
+-   First layers partially frozen
+-   Replaced final fully connected layer
 -   Added custom classifier with:
     -   Linear layers
     -   ReLU activation
     -   Dropout
     -   Final output layer for 17 classes
+
 ```python
 class PlanetClassifier(nn.Module):
     def __init__(self, num_classes):
@@ -247,7 +248,7 @@ class PlanetClassifier(nn.Module):
 
 # Training Function
 The `train_model()` function:
-1.  Detects CUDA or CPU\
+1.  Detects CUDA or CPU
 2.  Performs training phase:
     -   Forward pass
     -   Loss calculation
@@ -309,23 +310,37 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         print(f"Train Loss: {epoch_train_loss:.4f}, "
               f"Val Loss: {epoch_val_loss:.4f}")
         print(f"Sample F1: {sample_f1:.4f}")
-
+        # Learning rate actualisation
         scheduler.step(epoch_val_loss)
-
+        # Best model save
         if sample_f1 > best_val_f1:
             best_val_f1 = sample_f1
             torch.save(model.state_dict(),
                        'best_planet_classifier.pth')
             print("Best model saved!")
-
+    # Training results visualisation
+    plt.figure(figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(range(1, num_epochs+1), train_losses, 'b-', label='Trénovací ztráta')
+    plt.plot(range(1, num_epochs+1), val_losses, 'r-', label='Validační ztráta')
+    plt.xlabel('Epocha')
+    plt.ylabel('Ztráta')
+    plt.title('Trénovací a validační ztráta')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig('training_results.png')
     return model
 ```
 
+**Training model results visualisation**
+
+<img width="4470" height="1466" alt="obrazek" src="https://github.com/user-attachments/assets/ee1c9832-0ef6-4f7e-98ff-b9635e990cad" />
+
 # Model Training
 Model components:
--   Loss function: BCEWithLogitsLoss (multi-label classification)\
--   Optimizer: Adam\
--   Scheduler: ReduceLROnPlateau\
+-   Loss function: BCEWithLogitsLoss (multi-label classification)
+-   Optimizer: Adam
+-   Scheduler: ReduceLROnPlateau
 -   Number of epochs: 15
 
 After training, the best model is loaded for evaluation.
@@ -345,7 +360,7 @@ end_time = time.time()
 print(f"Time needed for model train in {num_epochs} epochách: ", end_time - start_time)
 ```
 
-### Best model evaluate
+### Best model evaluation
 ```python
 model.load_state_dict(torch.load('best_planet_classifier.pth'))
 ```
@@ -358,27 +373,32 @@ Generated predictions for test data:
 
 # Confusion Matrices and Evaluation
 Evaluated the best model using:
--   Multilabel confusion matrices\
--   Average confusion matrix per sample\
+-   Multilabel confusion matrices
+-   Average confusion matrix per sample
 -   Per-tag metrics:
     -   Accuracy
     -   Precision
     -   Recall
     -   F1 Score
 
+<img width="2280" height="1769" alt="obrazek" src="https://github.com/user-attachments/assets/6bdb26b3-c00c-4c81-bc38-4cc12592c12f" />
+
+<img width="4769" height="3569" alt="obrazek" src="https://github.com/user-attachments/assets/9d277136-5109-4f43-adfb-8741124ba6de" />
+
+<img width="1200" height="509" alt="obrazek" src="https://github.com/user-attachments/assets/a4955ee8-d31d-490a-b8cb-135dce9f44dc" />
 
 Visualized:
--   Confusion matrices for selected tags\
--   Average confusion matrix\
+-   Confusion matrices for selected tags
+-   Average confusion matrix
 -   F1 score for all tags
 
 # Summary
 This project implements a complete multi-label classification pipeline:
--   Data preprocessing\
--   Feature engineering\
--   Transfer learning with ResNet50\
--   Model training and validation\
--   Metric evaluation\
+-   Data preprocessing
+-   Feature engineering
+-   Transfer learning with ResNet50
+-   Model training and validation
+-   Metric evaluation
 -   Submission file generation
 
 The model is designed for satellite image classification of Amazon
