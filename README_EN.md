@@ -360,7 +360,7 @@ num_epochs = 15
 start_time = time.time()
 trained_model = train_model(model=model, train_loader=train_loader, val_loader=valid_loader, criterion=criterion, optimizer=optimizer, scheduler=scheduler, num_epochs=num_epochs)
 end_time = time.time()
-print(f"Time needed for model train in {num_epochs} epochách: ", end_time - start_time)
+print(f"Time needed for model train in {num_epochs} epochs: ", end_time - start_time)
 ```
 
 ### Best model evaluation
@@ -373,6 +373,46 @@ Generated predictions for test data:
 -   Applied sigmoid threshold (0.5)
 -   Converted predictions back to tag strings
 -   Created submission.csv file
+
+```python
+def create_submission(model, test_loader, submission_df):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+    model.eval()
+    predictions = []; image_names = []
+    with torch.no_grad():
+        for batch, (inputs, _) in enumerate(test_loader):
+            inputs = inputs.to(device)
+            outputs = model(inputs)
+            probs = torch.sigmoid(outputs)
+            preds = (probs > 0.5).float().cpu().numpy()
+            for i in range(len(preds)):
+                idx = batch * test_loader.batch_size + i
+                if idx < len(submission_df):
+                    img_name = submission_df.iloc[idx]['image_name']
+                    image_names.append(img_name)
+                    # Získání tagů pro predikci
+                    pred_tags = []
+                    for j, val in enumerate(preds[i]):
+                        if val == 1:
+                            pred_tags.append(unique_tags[j])
+                    predictions.append(' '.join(pred_tags))  
+    # Vytvoření submission dataframe
+    submit_df = pd.DataFrame({'image_name': image_names, 'tags': predictions })
+    # Uložení do CSV
+    submit_df.to_csv('submission.csv', index=False)
+    print("Submission soubor byl vytvořen!")
+
+submission_df['tag_vector'] = [np.zeros(len(unique_tags)) for _ in range(len(submission_df))]
+
+test_dataset = PlanetDataset(submission_df, TEST_DIR, transform=val_transform)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+
+start_time = time.time()
+create_submission(model, test_loader, submission_df)
+end_time = time.time()
+print(f"Čas pro vytvoření submission pro nejlepší model.: ", end_time - start_time)
+```
 
 # Confusion Matrices and Evaluation
 Evaluated the best model using:
