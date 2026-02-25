@@ -213,6 +213,13 @@ valid_dataset = PlanetDataset(valid_data, TRAIN_DIR, transform=val_transform)
 
 Created PyTorch datasets and DataLoaders with batch size 32.
 
+```python
+# Dataloaders create
+batch_size = 32
+train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+```
+
 # Using a Pretrained Model
 Created a multi-label classifier based on pretrained ResNet50:
 -   First layers partially frozen
