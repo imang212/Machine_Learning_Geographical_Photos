@@ -97,7 +97,6 @@ for tag, count in sorted_tags[:10]:
     print(f"{tag}: {count} výskytů")
 ```
 ![image](https://github.com/user-attachments/assets/cce47905-bde1-4714-a80e-32a0beb21b59)
-
 #### Graf distribuce jednotlivých tagů
 ![tags_distribution](https://github.com/user-attachments/assets/652ff75c-a222-46e7-a43c-29773f624a26)
 
@@ -505,3 +504,4 @@ def evaluate_model_with_confusion_matrix(model, data_loader, unique_tags):
     return binary_cm, avg_cm, tag_metrics
 binary_cm, avg_cm, tag_metrics = evaluate_model_with_confusion_matrix(model, test_loader, unique_tags)
 ```
+
