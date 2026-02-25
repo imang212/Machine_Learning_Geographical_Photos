@@ -101,8 +101,6 @@ print(f"\\nNumber of unique tags: {len(unique_tags)}")
 print(f"Unique tags: {unique_tags}")
 ```
 
-![image](https://github.com/user-attachments/assets/b7fbb05d-95e6-4d8a-a7f0-8462262d6b22)
-
 I found that there are 17 unique tags describing the image environment:
 
 agriculture, artisinal_mine, bare_ground, blooming, blow_down, clear,
@@ -112,8 +110,6 @@ primary, road, selective_logging, slash_burn, water
 ## Tag Frequency Analysis
 I analyzed how frequently each tag appears in the dataset and visualized
 the distribution using a graph.
-
-![image](https://github.com/user-attachments/assets/cce47905-bde1-4714-a80e-32a0beb21b59)
 
 ### Distribution graph of tags
 ![tags_distribution](https://github.com/user-attachments/assets/652ff75c-a222-46e7-a43c-29773f624a26)
