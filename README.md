@@ -30,7 +30,7 @@ Contents License.
 
 https://www.kaggle.com/datasets/nikitarom/planets-dataset/data
 
-The root structure of the dataset:
+**The root structure of the dataset:**
 
 ![image](https://github.com/user-attachments/assets/1fab1cc9-de39-4a88-a92f-6ae9f64b1def)
 
