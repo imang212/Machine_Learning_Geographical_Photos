@@ -42,12 +42,6 @@ name of the image - tags -- description of features present in the image
 of the image - tags -- description of image features (e.g.,
 clear_primary, clear_cloudy_primary, etc.)
 
-### Image Directories
--   **test-jpg** -- approximately 40,000 test images
--   **train-jpg** -- approximately 40,000 training images
--   **test-jpg-additional** -- approximately 20,500 additional test
-    images
-
 ## Technologies
 -   Python 3.11
 -   PyTorch
@@ -59,6 +53,8 @@ The model utilizes a pre-trained ResNet50 backbone with a custom head optimized 
 2. Pooling: AdaptiveAvgPool2d (Global Average Pooling).
 3. Classifier: - Linear(2048 -> 512) -> BatchNorm -> ReLU -> Dropout(0.2)
     - Final Linear layer for 17 classes.
+
+<img width="571" height="813" alt="Model_architecture" src="https://github.com/user-attachments/assets/3ec13b7b-1cc0-450e-b922-b8e0d8602bae" />
 
 ## Installation & Usage
 1. Clone the repo:
