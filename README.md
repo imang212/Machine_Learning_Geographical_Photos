@@ -293,7 +293,7 @@ class PlanetClassifier(nn.Module):
         return output
 ```
 
-# Training Function
+# Training
 The `train_model()` function:
 1.  Detects CUDA or CPU
 2.  Performs training phase:
@@ -406,7 +406,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
     return model
 ```
 
-**Training model results visualisation**
+## Training model results visualisation
 
 <img width="4471" height="1466" alt="training_results" src="https://github.com/user-attachments/assets/fd2d6a60-66cc-45fa-bdc6-fef358b99c58" />
 
@@ -500,7 +500,7 @@ Evaluated the best model using:
     -   Recall
     -   F1 Score
       
-<img width="398" height="52" alt="all_tags_confusion_matrix" src="https://github.com/user-attachments/assets/1a7e53cc-7e5f-413b-9dff-c4bdbc6c746b" />
+<img width="4769" height="3569" alt="all_tags_confusion_matrix_grid" src="https://github.com/user-attachments/assets/74cd804c-4d29-414b-96bf-dae4dc6adeea" />
 
 <img width="2306" height="1769" alt="aggregated_confusion_matrix" src="https://github.com/user-attachments/assets/4fc971ac-ff94-421d-bd43-33ca9003705d" />
 
