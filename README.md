@@ -511,14 +511,6 @@ Visualized:
 -   Average confusion matrix
 -   F1 score for all tags
 
-# Summary
-This project implements a complete multi-label classification pipeline:
--   Data preprocessing
--   Feature engineering
--   Transfer learning with ResNet50
--   Model training and validation
--   Metric evaluation
--   Submission file generation
+# Tags prediction (on submission data)
+<img width="1992" height="1201" alt="tags_prediction" src="https://github.com/user-attachments/assets/174f66a3-2b0c-40e2-b049-e8874f0c2e5e" />
 
-The model is designed for satellite image classification of Amazon
-rainforest terrain.
