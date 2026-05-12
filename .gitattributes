@@ -1,0 +1,2 @@
+best_planet_classifier_ResNet50.pth filter=lfs diff=lfs merge=lfs -text
+best_planet_classifier_ResNet50_non_weighted.pth filter=lfs diff=lfs merge=lfs -text

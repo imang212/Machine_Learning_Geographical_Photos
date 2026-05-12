@@ -1,35 +1,49 @@
-# Trénovací model na geografická data
-Rozhodl jsem se udělat trénovací model používající strojové učení na rozpoznávání geografických dat v rámci seminární práce na USU. 
+# Training Model for Geographic Data
+I decided to create a machine learning training model for recognizing
+geographic data as part of a seminar project at USU.
 
-### Dataset
-Budu pracovat z datasetem ze stránek kaggle.com (planets_dataset), který obsahuje přibližně 40 000 testovacích, 40 000 trénovacích obrázků terénu amazonského pralesa a obsahuje soubory csv formátu s popisem testovacích a trénovacích obrázků. Datasetem geografických obrázku vyfocených v Amazonském pralese, který obsahuje 2 csv soubory s tabulkami, které popisují, co na obrázcích je pro strojové učení. Dataset můžu volně použít ke strojovému učení na základě license Database Contents License, která to povoluje. Odkaz k datasetu: https://www.kaggle.com/datasets/nikitarom/planets-dataset/data
+## Dataset
+I am working with a dataset from Kaggle (planets_dataset), which
+contains approximately 40,000 test images and 40,000 training images of
+Amazon rainforest terrain. It also includes CSV files describing both
+the training and test images.
 
-Pojďme si zobrazit kořenovou strukturu datasetu.:
+The dataset contains geographic images taken in the Amazon rainforest,
+along with two CSV files that describe what appears in each image for
+machine learning purposes.
+
+The dataset can be freely used for machine learning under the Database
+Contents License.
+
+Dataset link:
+https://www.kaggle.com/datasets/nikitarom/planets-dataset/data
+
+The root structure of the dataset:
 
 ![image](https://github.com/user-attachments/assets/1fab1cc9-de39-4a88-a92f-6ae9f64b1def)
 
-První csv tabulka s názvem **sample_submission.csv** obsahuje 61191 hodnot, obsahuje 2 sloupce:
-image_name - název daného obrázku
-tags - popis vlastností toho co je na obrázcích.
+### CSV Files
+**sample_submission.csv** - 61,191 records - 2 columns: - image_name --
+name of the image - tags -- description of features present in the image
 
-Druhá csv tabulka s názvem **train_classes.csv** obsahuje 40 479 hodnot obsahuje také 2 sloupce:
-image_name - název daného obrázku
-tags - popis vlastností toho co je na obrázcích např.: clear_primary, clear_cloudy_primary, atd...
+**train_classes.csv** - 40,479 records - 2 columns: - image_name -- name
+of the image - tags -- description of image features (e.g.,
+clear_primary, clear_cloudy_primary, etc.)
 
-Máme adresáře pro obrázky:
+### Image Directories
+-   **test-jpg** -- approximately 40,000 test images\
+-   **train-jpg** -- approximately 40,000 training images\
+-   **test-jpg-additional** -- approximately 20,500 additional test
+    images
 
-**test-jpg**, kde se nachází testovací obrázky, je jich přibližně 40 000. 
+## Technologies
+-   Python 3.11
+-   PyTorch
+-   ResNet50
 
-**train-jpg**, kde se nachází trénovací obrázky, je jich přibližně 40 000.
-
-Máme ještě adresář **test-jpg-additional**, kde se nachází testovací ještě nachází přibližně 20 500 testovacích obrázků navíc. 
-
-### Technologie
-Python 3.11. PyTorch a Resnet50.
-### Načtení dat pro trénovací model
-
+## Data Loading for the Training Model
 ```python
-#import potřebných datasetů
+# import required libraries
 import os
 import pandas as pd
 import numpy as np
@@ -45,84 +59,95 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, models
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-# Nastavení cest k datům
+# Dataset paths configuration
 DATA_DIR = './nikitarom/planets-dataset/versions/3/'
 TRAIN_DIR = os.path.join(DATA_DIR, 'planet/planet/train-jpg')
 TEST_DIR = os.path.join(DATA_DIR, 'planet/planet/test-jpg')
 TRAIN_CLASSES = os.path.join(DATA_DIR, 'planet/planet/train_classes.csv')
 SUBMISSION = os.path.join(DATA_DIR, 'planet/planet/sample_submission.csv')
 
-# Načtení CSV souborů
+# Load CSV files
 train_df = pd.read_csv(TRAIN_CLASSES)
 submission_df = pd.read_csv(SUBMISSION)
 ```
-Naimportoval jsem potřebné datasety pro práci s daty. Určil jsem si cesty k adresářům s trénovací a testovacími obrázky a s popisem obrázků. Načetl jsem si csv soubory.
 
-### Zjišťovaní informací o tabulce
+I imported the necessary libraries for data processing, set up paths to
+training and testing images, and loaded the CSV files.
+
+## Exploring Dataset Information
+I displayed:
+-   Number of training and test records
+-   Table structure and column information
+-   Null values
+-   Distribution of tags
+
 ```python
-print(f"Počet trénovacích záznamů: {len(train_df)}")
-print(f"Počet testovacích záznamů: {len(submission_df)}")
+print(f"Number of training samples: {len(train_df)}")
+print(f"Number of test samples: {len(submission_df)}")
 
-# Zobrazení informací o tabulce
-print('\nZobrazení informací o trénovací tabulce:')
-print("Hlavička tabulky: ", train_df.head(), '\n')
-print("Informace o tabulce: ", train_df.info(), '\n')
-print("Nulové hodnoty: ", train_df.isnull().sum(), '\n')
+print("\\nTraining dataframe preview:")
+print(train_df.head())
+print("\\nTraining dataframe info:")
+print(train_df.info())
+print("\\nNull values:")
+print(train_df.isnull().sum())
 
-# Zobrazme si distribuci tagů ve sloupci 'tags'
+# Extract all tags
 all_tags = []
 for tags in train_df['tags'].values:
     all_tags.extend(tags.split())
 unique_tags = sorted(list(set(all_tags)))
-print(f"\nPočet unikátních tagů: {len(unique_tags)}")
-print(f"Unikátní tagy: {unique_tags}")
+print(f"\\nNumber of unique tags: {len(unique_tags)}")
+print(f"Unique tags: {unique_tags}")
 ```
-![image](https://github.com/user-attachments/assets/b7fbb05d-95e6-4d8a-a7f0-8462262d6b22)
 
-Vypsal jsem si informace o tabulce, abych věděl kolik s ní je záznamů, jak má nastavené sloupce, jestli tam například jsou povoleny nulové hodnoty a jakého typu jsou. Také jsem si vypsal informace o tom, jestli obsahuje nějaké nulové hodnoty a kolik je tagů ve sloupci **tags**, kde jsem zjistil, že se vyskytuje 17 různých tagů pro popis prostředí obrázků. 
+I found that there are 17 unique tags describing the image environment:
 
-**Unikátní tagy:** agriculture, artisinal_mine, bare_ground, blooming, blow_down, clear, cloudy, conventional_mine, cultivation, habitation, haze, partly_cloudy, primary, road, selective_logging, slash_burn, water
+agriculture, artisinal_mine, bare_ground, blooming, blow_down, clear,
+cloudy, conventional_mine, cultivation, habitation, haze, partly_cloudy,
+primary, road, selective_logging, slash_burn, water
 
-#### Analýza frekvence tagů
-Abych měl přehled o tom kolikrát se tam který tag vyskytuje.
-```python
-tag_counts = {}
-for tag in all_tags:
-    if tag in tag_counts: tag_counts[tag] += 1
-    else: tag_counts[tag] = 1
+## Tag Frequency Analysis
+I analyzed how frequently each tag appears in the dataset and visualized
+the distribution using a graph.
 
-sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)
-print("\nNejčastější tagy:")
-for tag, count in sorted_tags[:10]:
-    print(f"{tag}: {count} výskytů")
-```
-![image](https://github.com/user-attachments/assets/cce47905-bde1-4714-a80e-32a0beb21b59)
-#### Graf distribuce jednotlivých tagů
+### Distribution graph of tags
 ![tags_distribution](https://github.com/user-attachments/assets/652ff75c-a222-46e7-a43c-29773f624a26)
 
-### Trénování dat a vytvoření klasifikátorů
-#### Vytvoření one-hot encodingu pro tagy
-Abych mohl s tagy u obrázků trénovacím modelu pracovat, tak si musím data převét na vektory, abych s nimi mohl pracovat v PyTorch, kde je poté pomocí tensoru převeden na formát vektorů ve floatech, s kterým bude pracovat trénovací model. Vypíšem si hlavičku datasetu a je tam vidět nový vytvořený sloupec, kde u každého záznamu je udělaný vektor pole, který má 17 hodnot ve formátu floatu, které buďto reprezentují 1.0(True) a nebo 0.0(False) hodnotu, podle toho jestli dané tagy obrázek obsahuje.   
+# Model Training and Classifier Creation
+## One-Hot Encoding for Tags
+To train the model, tags must be converted into vectors.
+
+Each image is represented by a 17-dimensional float vector where:
+-   1.0 = tag present
+-   0.0 = tag not present
+
 ```python
-# Vytvoření one-hot encodingu pro tagy
+# Convert tag strings into one-hot encoded vectors
 def get_tag_map(tags):
     labels = np.zeros(len(unique_tags))
-    if pd.isna(tags): return labels
+    if pd.isna(tags):
+        return labels
     for tag in tags.split():
         if tag in unique_tags:
             labels[unique_tags.index(tag)] = 1
     return labels
-# Přidání one-hot encodingu do dataframe
+# Add encoded vectors to dataframe
 train_df['tag_vector'] = train_df['tags'].apply(get_tag_map)
-
 print(train_df.head())
 ```
+This format is required for multi-label classification in PyTorch.
+
 ![image](https://github.com/user-attachments/assets/3c2fc5bc-d3e0-4f06-ae01-ac8fb5161937)
 
-#### Vytvoření dataset třídy pro PyTorch 
-Abych mohl udělat trénovací model pro Resnet50, tak si musím vytvořit dataset třídu pro PyTorch. V této třídě si určím dataframe, s kterým budu pracovat, adresář pro obrázky a typ transformace pro dané obrázky. Je tu funkce, která mi vrací délku dataframu a funkce __getitem__, která načte obrázky, aplikuje na ně transformaci a pomocí FloatTensor v PyTorch převede tag_vector sloupec s vektory, který převede vektory tagů ve floatu do správného formátu k trénování datasetu a potom vrátíme vytvořený dataset pro zpracování s obrázky a tag vektorem.
+## Creating a Custom PyTorch Dataset Class
+I created a custom `PlanetDataset` class that:
+-   Loads images
+-   Applies transformations
+-   Converts tag vectors into FloatTensor format
+-   Returns image and label vectors
+
 ```python
-# Vytvoření vlastní Dataset třídy pro PyTorch
 class PlanetDataset(Dataset):
     def __init__(self, dataframe, img_dir, transform=None):
         self.dataframe = dataframe
@@ -133,27 +158,24 @@ class PlanetDataset(Dataset):
     def __getitem__(self, idx):
         img_name = self.dataframe.iloc[idx]['image_name']
         img_path = os.path.join(self.img_dir, img_name + '.jpg')
-        # Načtení obrázku
+        # Load image and convert to RGB
         image = Image.open(img_path).convert('RGB')
-        # Aplikace transformací, pokud jsou definované
-        if self.transform: image = self.transform(image)
-        # Získání one-hot encodingu pro tagy
+        # Apply transformations if defined
+        if self.transform:
+            image = self.transform(image)
+        # Convert tag vector to FloatTensor
         tag_vector = torch.FloatTensor(self.dataframe.iloc[idx]['tag_vector'])
         return image, tag_vector
 ```
-#### Definování transformace
-Nadefinujem si transformaci pro trénovací a validační data, která bude použita pro trénování modelu. Můžem si nadefinovat zvlášť transformaci pro trénovací data a pro validační data.
+## Image Transformations define
+Defined separate transformations for training and validation data:
+-   Resize to 224x224
+-   Random horizontal and vertical flips
+-   Random rotation
+-   Color jitter (brightness, contrast, saturation, hue)
+-   Normalization using ImageNet mean and standard deviation
 
-U transformace si můžeme určit.:
-- U jaké velikosti v pixelech chceme začít.
-- Jestli je převedeme na tensor.
-- Jestli chceme obrázek náhodně otáčet horizontálně nebo vertikálně. Tohle se hodně hodí pro obrázky tohoto typu, protože dané obrázky mohou být jakkoliv vyfoceny. 
-- Náhodnou rotaci, u které si určíme počet stupňů.
-- Můžem si upravit obraz, jaký chceme mít jas, kontrast, sytost, a další...
-- Normalizaci, kde určíme průměr a směrodatnou odchylku na třídimenzionální data transformovaní obrázků.
-- A spoustu dalších vlastností...
 ```python
-# Definování transformací pro obrázky
 train_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.RandomHorizontalFlip(),
@@ -163,76 +185,57 @@ train_transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
+
 val_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 ```
-#### Rozdělení na trénovací data a jejich připracení pro trénování modelu
-Model si rozdělím na trénovací a validační data. Nastavím si rozdělení trénovacích dat a validačních dat 80/20 a random_state pro zamíchání dat. Následně si vypíši kolik tam je trénovacích a validačních vzorků Vytvořím si datasety pro trénovací a validační data podle třídy PlanetDataset definované pro train model pomocí torch. 
+
+## Train / Validation Split
+Split dataset into:
+-   80% training
+-   20% validation
+
 ```python
 train_data, valid_data = train_test_split(train_df, test_size=0.2, random_state=42)
-print(f"\nPočet trénovacích vzorků: {len(train_data)}")
-print(f"Počet validačních vzorků: {len(valid_data)}")
-# Vytvoření datasetů
+print(f"\nCount of training samples: {len(train_data)}")
+print(f"Count of validation samples: {len(valid_data)}")
+# Datasets create
 train_dataset = PlanetDataset(train_data, TRAIN_DIR, transform=train_transform)
 valid_dataset = PlanetDataset(valid_data, TRAIN_DIR, transform=val_transform)
 ```
-![image](https://github.com/user-attachments/assets/68e96cc7-eec2-4446-85d6-f15e2d43b884)
 
-Načtení dat do DataLoaderu a vytvoření vizualizace.
+Created PyTorch datasets and DataLoaders with batch size 32.
 
-Datasety si načtu do DataLoaderu obsahující dávky (iterace) dat pomocí funkce z PyTorch, abych z nich mohl udělat trénovací model, ve kterých si určím batch size, který obvykle bývá 32, jestli je chci zamíchat a počet workerů. A potom si můžu vypsat ukázku načtení jedné dávky dat obrázků a labelů z train DataLoaderu. Tato operace, pokud těch dat je hodně, může už trvat dlouhou dobu. Můžu si vypsat, jak vypadá taková jedna dávka dat připravená pro vytvoření trénovacího modelu pomocí resnet50. Vizualizuji si obrázky z datasetu. Na konci si ještě můžu nastavit hodnoty deformací obrázků pro průměr a smerodatnou odchylku, poté už jsou data připravena pro trénování.
 ```python
-# Vytvoření dataloaderů
+# Dataloaders create
 batch_size = 32
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
 valid_loader = DataLoader(valid_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
-# Ukázka načtení jedné dávky dat
-start_time = time.time()
-images, labels = next(iter(train_loader))
-end_time = time.time()
-print(f"\nTvar načtených obrázků: {images.shape}")
-print(f"Tvar načtených tagů: {labels.shape}")
-print("Čas pro načtení dat do DataLoaderu: ", end_time - start_time, " s")
-# Vizualizace několika obrázků z datasetu
-mean = [0.485, 0.456, 0.406]; std = [0.229, 0.224, 0.225]
-def visualize_sample(dataset, num_samples=5):
-    plt.figure(figsize=(15, 3*num_samples))
-    for i in range(num_samples):
-        image, label = dataset[i]
-        image = image.permute(1, 2, 0).numpy()
-        # Denormalizace obrázku pro zobrazení
-        image = std * image + mean
-        image = np.clip(image, 0, 1)
-        tags = [unique_tags[j] for j in range(len(unique_tags)) if label[j] == 1]
-        plt.subplot(1, num_samples, i+1)
-        plt.imshow(image)
-        plt.title(f"Tagy: {', '.join(tags)}")
-        plt.axis('off')
-    plt.tight_layout()
-    plt.show()
-visualize_sample(train_dataset)
-print("\nData jsou připravena pro trénování modelu!")
 ```
-#### Použití předtrénovaného modelu
-Vytvoříme si třídu multi-label klisifikátoru pro klasifikaci daných dat, aby se mohla trénovat. Když jsou data připravená, můžu už začít s předtrénovaným modelem resnet50. Zmrazí se prvních 10 vrstev. Nahradí finální plně připojenou vrstvu pro multi-label klasifikátor. Nastavíme si sekvenci, v jaký sekvenci chceme, aby nám trénovací model trénoval data. nadefinujem si nejdřív lineární transformaci pro plně připojenou vrstvu, poté ReLU, jaký chceme Dropout, poté tohleto ještě můžeme opakovat, jenom lineární transformace bude pro počet tříd. ještě máme udělanou funkci pro vrácení přední vrstvy klasifikátoru.
-```python
-import torch.nn as nn
-import torch.optim as optim
-from torchvision import models
 
-# vytvoření multi-label klasifikátoru pomocí ResNet50
+# Using a Pretrained Model
+Created a multi-label classifier based on pretrained ResNet50:
+-   First layers partially frozen
+-   Replaced final fully connected layer
+-   Added custom classifier with:
+    -   Linear layers
+    -   ReLU activation
+    -   Dropout
+    -   Final output layer for 17 classes
+
+```python
 class PlanetClassifier(nn.Module):
     def __init__(self, num_classes):
         super(PlanetClassifier, self).__init__()
         self.resnet = models.resnet50(pretrained=True)
-        # Zmrazení prvních 10 vrstev modelu
+        # Freeze most layers
         for param in list(self.resnet.parameters())[:-10]:
             param.requires_grad = False
-        # Nahrazení finální plně připojené vrstvy pro multi-label klasifikaci
         in_features = self.resnet.fc.in_features
+        # Replace final fully connected layer
         self.resnet.fc = nn.Sequential(
             nn.Linear(in_features, 512),
             nn.ReLU(),
@@ -246,49 +249,32 @@ class PlanetClassifier(nn.Module):
         return self.resnet(x)
 ```
 
-#### Vytvoření trénovacího modelu
-Vytvoříme si funkci pro trénování modelu, kam nám bude vstupovat náš vytvořený klasifikátor, dataset loader trénovacích dat a dataset loader validačních dat, criterion zaznamenávající ztrátu, optimizer (nejčastější je Adam), scheduler (zaznamenává průběžný learning rate) a epochs (kolik chci provést epoch).
+# Training Function
+The `train_model()` function:
+1.  Detects CUDA or CPU
+2.  Performs training phase:
+    -   Forward pass
+    -   Loss calculation
+    -   Backpropagation
+    -   Optimizer step
+3.  Performs validation phase:
+    -   No gradient computation
+    -   Calculates loss
+    -   Converts outputs using sigmoid
+    -   Computes precision, recall, and F1 scores
+4.  Saves the best model (`best_planet_classifier.pth`)
+5.  Visualizes training and validation loss
 
-Nejdříve si ve funkci určím device zařízení pro trénování modelu podle toho jestli chci cude (grafickou kartu od Nvidie) a jestli počítač nemá grafiku od Nvidie, tak se může zvolit cpu (procesor).
-
-Teďka je potřeba dosadit do našeho modelu toto zařízení, pomocí kterého se bude učit. Určíme si proměnnou pro zaznamenávání nejlepší hodnoty, podle které si potom na konci uložíme ten nejlepší model. 
-
-Vytvoříme si seznamy pro ztráty tréningových dat a validačních dat, podle kterých poté budeme zobrazovat úspěšnost modelu.
-
-Model budeme učit v epochách (cyklech) tím, že si vytvoříme hlacní for-cyklus pro daný počet epoch, kolik chceme provést. Před dalším for cyklem vypíšeme na kolikáté epoše náš model je.
-
-**1. Trénování dat**
-
-Násleďně pomocí příkazu model.train() začne trénování v dané fázi modelu. Při tomto trénování si budem do proměnné running_loss zaznamenávat ztrátu. For-cyklem projdeme inputy a labely pro loader dataset trénovacích dat, kde je přidáme do paměti grafické karty nebo procesoru, který je bude učit. U optimizéru si nastavíme zero_grad(), nulový gradient. Inputy v modelu převedeme na outputy a násleďně vytvoříme proměnnou loss, kam uložíme podle kriterion, kam dáme outputy s labely. Uděláme loss.backward() ztrátových dat. Dále optimizer.step(). Poté uložíme do proměnné running_loss ztrátový item vynásobený velikostí inputu.
-
-Potom, když nám tento for-cyklus pro danou ecpochu proběhl můžeme udělat proměnnou epoch_train_loss, do které se uloží procentuální ztráta u každé epochy a tu následně uložíme do train_loses seznamu.
-
-**2.Validace dat**
-
-Teď je potřeba ještě projít validační data v dané fázi, kde začne vyhodnocování modelu pomocí příkazu model.eval(), u kterého zase budeme zaznamenávat running_loss ztrátu a bude mít seznamy pro ukládání predikátů a labelů. Pomocí PyTorch s vypnutím výpočtu gradientů s for-cyklem, který má inputy a labely pro loader dataset validačních dat provedeme validační fázi, která už je o něco jednodušší než u trénovacích dat. Zase inputy a labely přidáme do daného zařízení, uděláme outputy a vytvoříme loss proměnnou pomocí criterion, running_loss proměnnou, kde se zaznamená aktuální ztráta při validaci. u validačních dat vytvoříme binární predikce pomocí sigmoidy, kam budou vstupovat outputy a nastaví se u toho minimální dolní mez, odkud chceme, aby nám to bralo. Binární predikce ještě převedeme do float formátu a následně je uložíme do seznamu všech predikcí, které nám vrátí z CPU paměti. Do seznamu všech labelů také uložíme labely, které nám také vrátí z CPU paměti.
-
-Predikáty a labely z validačních dat převedeme do 1D dimenze a do formátu Numpy array. Do proměnné epoch_val_loss si uložíme úspěšnost validace.
-
-**Vyhodnocení dané fáze**
-
-Teď, když proběhlo trénování a validace, uděláme nějaké vyhodnocení dané fáze trénovacího modelu.
-
-Z daných dat uděláme precision score a recall score. Vypočítáme F1 score z dané fáze a potom celkové. Násleďně tyto data vypíšeme. Vypíšeme i F1 score pro nejlepší a nejhorší tagy.
-
-Aktualizujem learning rate pomocí schenduler. Nejlepší model uložíme do souboru typu pth. (Důležité)
-
-**Visualizace výsledků trénovacího modelu**
-
-Nakonec si uděláme graf vizualizace výsledků trénovacího modelu, který si uložíme do souboru a z celé funkce vrátíme model.
 ```python
 def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs=10):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Používám zařízení: {device}")
+    print(f"Using device: {device}")
     model = model.to(device)
     best_val_f1 = 0.0
-    train_losses = []; val_losses = []
+    train_losses = []
+    val_losses = []
     for epoch in range(num_epochs):
-        print(f"\nEpoch {epoch+1}/{num_epochs}")
+        print(f"\\nEpoch {epoch+1}/{num_epochs}")
         print("-" * 40)
         # Training phase
         model.train()
@@ -307,7 +293,8 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
         # Validation phase
         model.eval()
         running_loss = 0.0
-        all_preds = []; all_labels = []
+        all_preds = []
+        all_labels = []
         with torch.no_grad():
             for inputs, labels in val_loader:
                 inputs = inputs.to(device)
@@ -315,44 +302,26 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
                 outputs = model(inputs)
                 loss = criterion(outputs, labels)
                 running_loss += loss.item() * inputs.size(0)
-                # Convert probabilities to binary predictions using 0.5 threshold
                 preds = (torch.sigmoid(outputs) > 0.5).float()
                 all_preds.append(preds.cpu())
                 all_labels.append(labels.cpu())
-        # Spojení všech dávek
         all_preds = torch.cat(all_preds, dim=0).numpy()
         all_labels = torch.cat(all_labels, dim=0).numpy()
         epoch_val_loss = running_loss / len(val_loader.dataset)
         val_losses.append(epoch_val_loss)
-        precision = precision_score(all_labels, all_preds, average='samples', zero_division=0)
-        recall = recall_score(all_labels, all_preds, average='samples', zero_division=0)
-        # F1 skóre pro každou třídu a průměr
         sample_f1 = f1_score(all_labels, all_preds, average='samples', zero_division=0)
-        macro_f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
-        print(f'Train Loss: {epoch_train_loss:.4f}, Val Loss: {epoch_val_loss:.4f}')
-        print(f'Precision: {precision:.4f}, Recall: {recall:.4f}')
-        print(f'Sample F1: {sample_f1:.4f}, Macro F1: {macro_f1:.4f}')
-        # Výpis F1 skóre pro některé důležité tagy
-        tag_f1_scores = []
-        for i, tag in enumerate(unique_tags):
-            tag_f1 = f1_score(all_labels[:, i], all_preds[:, i], zero_division=0)
-            tag_f1_scores.append((tag, tag_f1))
-        # Seřazení tagů podle F1 skóre
-        tag_f1_scores.sort(key=lambda x: x[1], reverse=True)
-        print("\nF1 skóre pro nejlepší tagy:")
-        for tag, f1 in tag_f1_scores[:5]:
-            print(f"{tag}: {f1:.4f}")
-        print("\nF1 skóre pro nejhorší tagy:")
-        for tag, f1 in tag_f1_scores[-5:]:
-            print(f"{tag}: {f1:.4f}")
-        # Aktualizace learning rate
-        scheduler.step(epoch_val_loss)        
-        # Uložení nejlepšího modelu
+        print(f"Train Loss: {epoch_train_loss:.4f}, "
+              f"Val Loss: {epoch_val_loss:.4f}")
+        print(f"Sample F1: {sample_f1:.4f}")
+        # Learning rate actualisation
+        scheduler.step(epoch_val_loss)
+        # Best model save
         if sample_f1 > best_val_f1:
             best_val_f1 = sample_f1
-            torch.save(model.state_dict(), 'best_planet_classifier.pth')
-            print("Uložen nejlepší model!")
-    # Vizualizace výsledků tréninku
+            torch.save(model.state_dict(),
+                       'best_planet_classifier.pth')
+            print("Best model saved!")
+    # Training results visualisation
     plt.figure(figsize=(12, 5))
     plt.subplot(1, 2, 1)
     plt.plot(range(1, num_epochs+1), train_losses, 'b-', label='Trénovací ztráta')
@@ -365,30 +334,45 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
     plt.savefig('training_results.png')
     return model
 ```
-### Trénování modelu
-Nyní provedeme trénování modelu. Uděláme model z vytvořené vlastní třídy klasifikátoru. Určíme si criterion pro ztrátová data, určíme si optimizer a schenduler. Násleně všechny tyto proměnné dáme do funkce train model, která ám ho vytrénuje. Musí tam vstupovat klasifikátor modelu, daný loader trénovacích dat, loader validačních dat, criterion pro ztrátová data, optimizer, scheduler a počet fází (epoch) v kolika to chceme udělat.
+
+**Training model results visualisation**
+
+<img width="4470" height="1466" alt="obrazek" src="https://github.com/user-attachments/assets/ee1c9832-0ef6-4f7e-98ff-b9635e990cad" />
+
+# Model Training
+Model components:
+-   Loss function: BCEWithLogitsLoss (multi-label classification)
+-   Optimizer: Adam
+-   Scheduler: ReduceLROnPlateau
+-   Number of epochs: 15
+
+After training, the best model is loaded for evaluation.
 
 ```python
-# Inicializace modelu, kritéria, optimizéru a scheduleru
+# Model, criterion, optimiser a scheduler initialisation
 model = PlanetClassifier(num_classes=len(unique_tags))
-criterion = nn.BCEWithLogitsLoss()  # Vhodné pro multi-label klasifikaci
+criterion = nn.BCEWithLogitsLoss()  # Suitable for multi-label clasification
 optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
 scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.5, verbose=True)
 
-print("Trénování modelu...")
+print("Model training...")
 num_epochs = 15
 start_time = time.time()
 trained_model = train_model(model=model, train_loader=train_loader, val_loader=valid_loader, criterion=criterion, optimizer=optimizer, scheduler=scheduler, num_epochs=num_epochs)
 end_time = time.time()
-print(f"Čas pro vytrénování modelu v {num_epochs} epochách: ", end_time - start_time)
+print(f"Time needed for model train in {num_epochs} epochs: ", end_time - start_time)
 ```
-### Vyhodnocení nejlepšího modelu
-Načteme si ten nejlepší model.
+
+### Best model evaluation
 ```python
 model.load_state_dict(torch.load('best_planet_classifier.pth'))
 ```
-#### Testování modelu na testovacíhch datech
-Funkce pro predikci a vytvoření submission souboru pro testovací data na nejlepším modelu.
+
+# Creating Submission File
+Generated predictions for test data:
+-   Applied sigmoid threshold (0.5)
+-   Converted predictions back to tag strings
+-   Created submission.csv file
 
 ```python
 def create_submission(model, test_loader, submission_df):
@@ -429,79 +413,36 @@ create_submission(model, test_loader, submission_df)
 end_time = time.time()
 print(f"Čas pro vytvoření submission pro nejlepší model.: ", end_time - start_time)
 ```
-#### Confusion matrices
-Vyhodnocení nejlepšího modelu na testovacích datech pomocí confusion matrices.
 
-```python
-def evaluate_model_with_confusion_matrix(model, data_loader, unique_tags):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
-    model.eval()
-    all_preds = []; all_labels = []
-    with torch.no_grad():
-        for inputs, labels in data_loader:
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            outputs = model(inputs)
-            preds = (torch.sigmoid(outputs) > 0.5).float()
-            all_preds.append(preds.cpu())
-            all_labels.append(labels.cpu())
-    # Spojení všech dávek
-    all_preds = torch.cat(all_preds, dim=0).numpy()
-    all_labels = torch.cat(all_labels, dim=0).numpy()
-    # 1. Binary Confusion Matrix pro každou třídu
-    binary_cm = multilabel_confusion_matrix(all_labels, all_preds)
-    # Vizualizace pro vybrané třídy (např. prvních 5 tagů)
-    n_classes_to_show = min(5, len(unique_tags))
-    plt.figure(figsize=(15, 4 * n_classes_to_show))
-    for i in range(n_classes_to_show):
-        plt.subplot(n_classes_to_show, 1, i + 1)
-        cm = binary_cm[i]
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=['Predicted Negative', 'Predicted Positive'], yticklabels=['Actual Negative', 'Actual Positive'])
-        plt.title(f'Confusion Matrix pro třídu: {unique_tags[i]}'); plt.ylabel('Skutečné hodnoty'); plt.xlabel('Predikované hodnoty')
-    plt.tight_layout(); plt.savefig('binary_confusion_matrices.png'); plt.close()
-    # 2. Komplexnější přístup - počty správně a špatně predikovaných tagů
-    tps = np.sum(np.logical_and(all_preds == 1, all_labels == 1), axis=1)
-    fps = np.sum(np.logical_and(all_preds == 1, all_labels == 0), axis=1)
-    fns = np.sum(np.logical_and(all_preds == 0, all_labels == 1), axis=1)
-    tns = np.sum(np.logical_and(all_preds == 0, all_labels == 0), axis=1)
-    # Pro každý vzorek máme nyní čtyři hodnoty - můžeme spočítat průměry
-    avg_tp = np.mean(tps)
-    avg_fp = np.mean(fps)
-    avg_fn = np.mean(fns)
-    avg_tn = np.mean(tns)
-    # Vytvoření "průměrné" confusion matrix
-    avg_cm = np.array([[avg_tn, avg_fp], [avg_fn, avg_tp]])
-    plt.figure(figsize=(8, 6))
-    sns.heatmap(avg_cm, annot=True, fmt='.2f', cmap='Blues', xticklabels=['Predicted Negative', 'Predicted Positive'], yticklabels=['Actual Negative', 'Actual Positive'])
-    plt.title('Průměrná Confusion Matrix (na vzorek)'); plt.ylabel('Skutečné hodnoty'); plt.xlabel('Predikované hodnoty')
-    plt.tight_layout(); plt.savefig('avg_confusion_matrix.png'); plt.close()
-    # 3. Analýza pro každý tag - výpočet accuracy, precision, recall a F1 score
-    tag_metrics = []
-    for i, tag in enumerate(unique_tags):
-        cm = binary_cm[i]
-        tn, fp, fn, tp = cm.ravel()
-        accuracy = (tp + tn) / (tp + tn + fp + fn) if (tp + tn + fp + fn) > 0 else 0
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
-        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-        tag_metrics.append({ 'tag': tag, 'accuracy': accuracy, 'precision': precision, 'recall': recall, 'f1': f1, 'support': tp + fn  # Počet výskytů tagu v datasetu
-        })
-    # Seřazení podle F1 score
-    tag_metrics.sort(key=lambda x: x['f1'], reverse=True)
-    # 4. Vizualizace metrik pro všechny tagy
-    # Získání metrik pro všechny tagy a jejich vizualizace
-    tags = [m['tag'] for m in tag_metrics]
-    f1_scores = [m['f1'] for m in tag_metrics]
-    precisions = [m['precision'] for m in tag_metrics]
-    recalls = [m['recall'] for m in tag_metrics]
-    supports = [m['support'] for m in tag_metrics]
-    # Vizualizace F1 score pro všechny tagy
-    plt.figure(figsize=(12, len(tags) * 0.3))
-    plt.barh(tags, f1_scores)
-    plt.xlabel('F1 Score'); plt.ylabel('Tag'); plt.title('F1 Score pro všechny tagy')
-    plt.tight_layout(); plt.savefig('tag_f1_scores.png'); plt.close()
-    return binary_cm, avg_cm, tag_metrics
-binary_cm, avg_cm, tag_metrics = evaluate_model_with_confusion_matrix(model, test_loader, unique_tags)
-```
+# Confusion Matrices and Evaluation
+Evaluated the best model using:
+-   Multilabel confusion matrices
+-   Average confusion matrix per sample
+-   Per-tag metrics:
+    -   Accuracy
+    -   Precision
+    -   Recall
+    -   F1 Score
 
+<img width="2280" height="1769" alt="obrazek" src="https://github.com/user-attachments/assets/6bdb26b3-c00c-4c81-bc38-4cc12592c12f" />
+
+<img width="4769" height="3569" alt="obrazek" src="https://github.com/user-attachments/assets/9d277136-5109-4f43-adfb-8741124ba6de" />
+
+<img width="1200" height="509" alt="obrazek" src="https://github.com/user-attachments/assets/a4955ee8-d31d-490a-b8cb-135dce9f44dc" />
+
+Visualized:
+-   Confusion matrices for selected tags
+-   Average confusion matrix
+-   F1 score for all tags
+
+# Summary
+This project implements a complete multi-label classification pipeline:
+-   Data preprocessing
+-   Feature engineering
+-   Transfer learning with ResNet50
+-   Model training and validation
+-   Metric evaluation
+-   Submission file generation
+
+The model is designed for satellite image classification of Amazon
+rainforest terrain.
