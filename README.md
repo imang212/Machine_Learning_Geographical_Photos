@@ -1,6 +1,6 @@
 # Training Model for Geographic Data
 I decided to create a machine learning training model for recognizing
-geographic data as part of a seminar project at USU.
+geographic data as part of a seminar project at USU. The main file of trained model is **train.ipynb** in Jupyter Notebook, where is all code for the classification.
 
 ## Dataset
 I am working with a dataset from Kaggle (planets_dataset), which
@@ -31,8 +31,8 @@ of the image - tags -- description of image features (e.g.,
 clear_primary, clear_cloudy_primary, etc.)
 
 ### Image Directories
--   **test-jpg** -- approximately 40,000 test images\
--   **train-jpg** -- approximately 40,000 training images\
+-   **test-jpg** -- approximately 40,000 test images
+-   **train-jpg** -- approximately 40,000 training images
 -   **test-jpg-additional** -- approximately 20,500 additional test
     images
 
@@ -43,30 +43,32 @@ clear_primary, clear_cloudy_primary, etc.)
 
 ## Data Loading for the Training Model
 ```python
-# import required libraries
+# import of required datasets
 import os
 import pandas as pd
 import numpy as np
 import seaborn as sns
+import time
 from PIL import Image
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score, multilabel_confusion_matrix
+from sklearn.metrics import f1_score, precision_score, recall_score, accuracy_score, multilabel_confusion_matrix, classification_report, confusion_matrix
+from sklearn.preprocessing import MultiLabelBinarizer
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torchvision import models
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, models
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 
-# Dataset paths configuration
+# Setting paths to data
 DATA_DIR = './nikitarom/planets-dataset/versions/3/'
 TRAIN_DIR = os.path.join(DATA_DIR, 'planet/planet/train-jpg')
 TEST_DIR = os.path.join(DATA_DIR, 'planet/planet/test-jpg')
 TRAIN_CLASSES = os.path.join(DATA_DIR, 'planet/planet/train_classes.csv')
 SUBMISSION = os.path.join(DATA_DIR, 'planet/planet/sample_submission.csv')
 
-# Load CSV files
+# Loading CSV files
 train_df = pd.read_csv(TRAIN_CLASSES)
 submission_df = pd.read_csv(SUBMISSION)
 ```
@@ -85,21 +87,22 @@ I displayed:
 print(f"Number of training samples: {len(train_df)}")
 print(f"Number of test samples: {len(submission_df)}")
 
-print("\\nTraining dataframe preview:")
-print(train_df.head())
-print("\\nTraining dataframe info:")
-print(train_df.info())
-print("\\nNull values:")
-print(train_df.isnull().sum())
+# Display information about the table
+print('\nDisplaying information about the training table:')
+print("Table header: \n", train_df.head(), '\n')
+print("Table info: ", train_df.info(), '\n')
+print("Null values: ", train_df.isnull().sum(), '\n')
 
-# Extract all tags
+# Display the tag distribution in the 'tags' column
 all_tags = []
 for tags in train_df['tags'].values:
     all_tags.extend(tags.split())
 unique_tags = sorted(list(set(all_tags)))
-print(f"\\nNumber of unique tags: {len(unique_tags)}")
+print(f"\nNumber of unique tags: {len(unique_tags)}")
 print(f"Unique tags: {unique_tags}")
 ```
+
+<img width="817" height="579" alt="Unique_tags_print" src="https://github.com/user-attachments/assets/bd6eab3d-622b-47ff-9224-58dd106ae0b7" />
 
 I found that there are 17 unique tags describing the image environment:
 
@@ -111,8 +114,11 @@ primary, road, selective_logging, slash_burn, water
 I analyzed how frequently each tag appears in the dataset and visualized
 the distribution using a graph.
 
+<img width="318" height="229" alt="Tags_distribution_print" src="https://github.com/user-attachments/assets/a105264d-0c70-426a-917a-b935a0bb75a3" />
+
 ### Distribution graph of tags
-![tags_distribution](https://github.com/user-attachments/assets/652ff75c-a222-46e7-a43c-29773f624a26)
+
+<img width="1200" height="500" alt="tags_distribution_train" src="https://github.com/user-attachments/assets/c994a561-4d78-4f9e-b9a5-1414d334ffaf" />
 
 # Model Training and Classifier Creation
 ## One-Hot Encoding for Tags
@@ -200,12 +206,14 @@ Split dataset into:
 
 ```python
 train_data, valid_data = train_test_split(train_df, test_size=0.2, random_state=42)
-print(f"\nCount of training samples: {len(train_data)}")
-print(f"Count of validation samples: {len(valid_data)}")
-# Datasets create
+print(f"\nNumber of training samples: {len(train_data)}")
+print(f"Number of validation samples: {len(valid_data)}")
+# Creating datasets
 train_dataset = PlanetDataset(train_data, TRAIN_DIR, transform=train_transform)
 valid_dataset = PlanetDataset(valid_data, TRAIN_DIR, transform=val_transform)
 ```
+
+<img width="398" height="52" alt="Snímek obrazovky z 2026-05-12 17-43-44" src="https://github.com/user-attachments/assets/d3f8ab92-d030-487b-955d-4dfbd69d898d" />
 
 Created PyTorch datasets and DataLoaders with batch size 32.
 
@@ -227,26 +235,31 @@ Created a multi-label classifier based on pretrained ResNet50:
     -   Final output layer for 17 classes
 
 ```python
+# Creating a multi-label classifier using ResNet50
 class PlanetClassifier(nn.Module):
     def __init__(self, num_classes):
         super(PlanetClassifier, self).__init__()
         self.resnet = models.resnet50(pretrained=True)
-        # Freeze most layers
-        for param in list(self.resnet.parameters())[:-10]:
-            param.requires_grad = False
-        in_features = self.resnet.fc.in_features
-        # Replace final fully connected layer
-        self.resnet.fc = nn.Sequential(
-            nn.Linear(in_features, 512),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, 256),
+        for param in list(self.resnet.parameters())[:-10]: param.requires_grad = False # only for smaller datasets
+        # Remove original avgpool and fc layers
+        self.backbone = nn.Sequential(*list(self.resnet.children())[:-2])
+        # Global Average Pooling instead of standard
+        self.global_avg_pool = nn.AdaptiveAvgPool2d(output_size=(1, 1)) # [batch, 2048, 2, 2] last layer of ResNet50, reduces output to 2x2
+        #in_features = self.resnet.fc.in_features # Replacing the final fully connected layer for multi-label classification
+        spatial_features = 2048 # 2048 channels, each with 2x2 spatial features
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(spatial_features, 512),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(256, num_classes)
+            nn.Linear(512, num_classes)
         )
     def forward(self, x):
-        return self.resnet(x)
+        features = self.backbone(x)  # [batch, 2048, H, W], Input image x passes through the backbone network, typically a pre-trained CNN (e.g. ResNet, VGG)
+        pooled = self.global_avg_pool(features)  # [batch, 2048, 1, 1]
+        output = self.classifier(pooled)  # [batch, num_classes], applying the sequence
+        return output
 ```
 
 # Training Function
@@ -266,19 +279,17 @@ The `train_model()` function:
 5.  Visualizes training and validation loss
 
 ```python
-def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs=10):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler, num_epochs=10, model_name='ResNet50', device=None):
+    device = torch.device(device) if device is not None else torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     model = model.to(device)
     best_val_f1 = 0.0
-    train_losses = []
-    val_losses = []
+    train_losses = []; val_losses = []; train_F1_scores = []; val_F1_scores = []
     for epoch in range(num_epochs):
-        print(f"\\nEpoch {epoch+1}/{num_epochs}")
+        print(f"\nEpoch {epoch+1}/{num_epochs}")
         print("-" * 40)
-        # Training phase
         model.train()
-        running_loss = 0.0
+        running_loss = 0.0; all_train_preds = []; all_train_labels = []
         for inputs, labels in train_loader:
             inputs = inputs.to(device)
             labels = labels.to(device)
@@ -288,13 +299,19 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
             loss.backward()
             optimizer.step()
             running_loss += loss.item() * inputs.size(0)
+            # for multilabel classification
+            preds = (torch.sigmoid(outputs) > 0.5).float()
+            all_train_preds.append(preds.cpu())
+            all_train_labels.append(labels.cpu())
         epoch_train_loss = running_loss / len(train_loader.dataset)
         train_losses.append(epoch_train_loss)
-        # Validation phase
+
+        all_train_preds, all_train_labels = torch.cat(all_train_preds, dim=0).numpy(), torch.cat(all_train_labels, dim=0).numpy()
+        train_f1 = f1_score(all_train_labels, all_train_preds, average='samples', zero_division=0)
+        train_F1_scores.append(train_f1)
+
         model.eval()
-        running_loss = 0.0
-        all_preds = []
-        all_labels = []
+        running_loss = 0.0; all_preds = []; all_labels = []
         with torch.no_grad():
             for inputs, labels in val_loader:
                 inputs = inputs.to(device)
@@ -305,39 +322,62 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, scheduler
                 preds = (torch.sigmoid(outputs) > 0.5).float()
                 all_preds.append(preds.cpu())
                 all_labels.append(labels.cpu())
-        all_preds = torch.cat(all_preds, dim=0).numpy()
-        all_labels = torch.cat(all_labels, dim=0).numpy()
         epoch_val_loss = running_loss / len(val_loader.dataset)
         val_losses.append(epoch_val_loss)
+
+        all_preds, all_labels = torch.cat(all_preds, dim=0).numpy(), torch.cat(all_labels, dim=0).numpy()
+        # Calculating metrics
+        precision = precision_score(all_labels, all_preds, average='samples', zero_division=0)
+        recall = recall_score(all_labels, all_preds, average='samples', zero_division=0)
         sample_f1 = f1_score(all_labels, all_preds, average='samples', zero_division=0)
-        print(f"Train Loss: {epoch_train_loss:.4f}, "
-              f"Val Loss: {epoch_val_loss:.4f}")
-        print(f"Sample F1: {sample_f1:.4f}")
-        # Learning rate actualisation
+        macro_f1 = f1_score(all_labels, all_preds, average='macro', zero_division=0)
+        val_F1_scores.append(sample_f1)
+        print(f'Train Loss: {epoch_train_loss:.4f}, Val Loss: {epoch_val_loss:.4f}, Train F1: {train_f1:.4f}, Val F1: {sample_f1:.4f}')
+        print(f'Precision: {precision:.4f}, Real Precision(Recall): {recall:.4f}')
+        print(f'Sample F1(Harmonic mean): {sample_f1:.4f}, Macro F1(Score for every class): {macro_f1:.4f}')
+        tag_f1_scores = []
+        for i, tag in enumerate(unique_tags):
+            tag_f1 = f1_score(all_labels[:, i], all_preds[:, i], zero_division=0)
+            tag_f1_scores.append((tag, tag_f1))
+        tag_f1_scores.sort(key=lambda x: x[1], reverse=True)
+        print("\nF1 scores for the best tags:")
+        for tag, f1 in tag_f1_scores[:5]:
+            print(f"{tag}: {f1:.4f}")
+        print("\nF1 scores for the worst tags:")
+        for tag, f1 in tag_f1_scores[-10:]:
+            print(f"{tag}: {f1:.4f}")
+
+        # Updating learning rate
+        #scheduler.step()
         scheduler.step(epoch_val_loss)
-        # Best model save
+
         if sample_f1 > best_val_f1:
             best_val_f1 = sample_f1
-            torch.save(model.state_dict(),
-                       'best_planet_classifier.pth')
+            torch.save(model.state_dict(), f"best_planet_classifier_{model_name}.pth")
             print("Best model saved!")
-    # Training results visualisation
-    plt.figure(figsize=(12, 5))
+    # Visualizing training results
+    plt.figure(figsize=(15, 5))
+    # Loss chart
     plt.subplot(1, 2, 1)
-    plt.plot(range(1, num_epochs+1), train_losses, 'b-', label='Trénovací ztráta')
-    plt.plot(range(1, num_epochs+1), val_losses, 'r-', label='Validační ztráta')
-    plt.xlabel('Epocha')
-    plt.ylabel('Ztráta')
-    plt.title('Trénovací a validační ztráta')
+    plt.plot(range(1, num_epochs+1), train_losses, 'b-', label='Training loss')
+    plt.plot(range(1, num_epochs+1), val_losses, 'r-', label='Validation loss')
+    plt.xlabel('Epoch'); plt.ylabel('Loss (%)'); plt.title('Training and validation loss')
+    plt.grid(True)
     plt.legend()
-    plt.tight_layout()
-    plt.savefig('training_results.png')
+    # Accuracy chart
+    plt.subplot(1, 2, 2)
+    plt.plot(range(1, num_epochs+1), train_F1_scores, 'g-', label='Training F1 score')
+    plt.plot(range(1, num_epochs+1), val_F1_scores, 'm-', label='Validation F1 score')
+    plt.xlabel('Epoch'); plt.ylabel('Accuracy (%)'); plt.title('Training and validation F1 score')
+    plt.grid(True)
+    plt.legend()
+    plt.tight_layout(); plt.savefig('training_results.png', dpi=300, bbox_inches='tight'); plt.show()
     return model
 ```
 
 **Training model results visualisation**
 
-<img width="4470" height="1466" alt="obrazek" src="https://github.com/user-attachments/assets/ee1c9832-0ef6-4f7e-98ff-b9635e990cad" />
+<img width="4471" height="1466" alt="training_results" src="https://github.com/user-attachments/assets/fd2d6a60-66cc-45fa-bdc6-fef358b99c58" />
 
 # Model Training
 Model components:
@@ -349,18 +389,19 @@ Model components:
 After training, the best model is loaded for evaluation.
 
 ```python
-# Model, criterion, optimiser a scheduler initialisation
-model = PlanetClassifier(num_classes=len(unique_tags))
-criterion = nn.BCEWithLogitsLoss()  # Suitable for multi-label clasification
-optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.001)
-scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, factor=0.5, verbose=True)
-
-print("Model training...")
+# Initializing model, criterion, optimizer, and scheduler
 num_epochs = 15
+model = PlanetClassifier(num_classes=len(unique_tags)) # ResNet50 model
+#criterion = nn.BCEWithLogitsLoss() #pos_weight=class_weights
+criterion = FocalLoss(alpha=1, gamma=2, pos_weight=None) # Focal loss for class balancing and focusing on hard cases
+optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-3, weight_decay=1e-4, betas=(0.9, 0.999)) # AdamW is an improved version of Adam with weight regularization
+scheduler = optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer, T_0=num_epochs, T_mult=1, eta_min=1e-6, last_epoch=-1)
+
+print("Training the model...")
 start_time = time.time()
-trained_model = train_model(model=model, train_loader=train_loader, val_loader=valid_loader, criterion=criterion, optimizer=optimizer, scheduler=scheduler, num_epochs=num_epochs)
+trained_model = train_model(model=model, train_loader=train_loader, val_loader=valid_loader, criterion=criterion, optimizer=optimizer, scheduler=scheduler, num_epochs=num_epochs, model_name="ResNet50")
 end_time = time.time()
-print(f"Time needed for model train in {num_epochs} epochs: ", end_time - start_time)
+print(f"Time to train the model in {num_epochs} epochs: ", (end_time - start_time)/60, " minutes, ", (end_time - start_time)/60/60, " hours")
 ```
 
 ### Best model evaluation
@@ -375,43 +416,47 @@ Generated predictions for test data:
 -   Created submission.csv file
 
 ```python
-def create_submission(model, test_loader, submission_df):
+def create_submission(model, test_loader, max_samples):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     model.eval()
-    predictions = []; image_names = []
+    predictions = []; image_names = []; processed_samples = 0
     with torch.no_grad():
         for batch, (inputs, _) in enumerate(test_loader):
+            if processed_samples >=max_samples: break
             inputs = inputs.to(device)
             outputs = model(inputs)
             probs = torch.sigmoid(outputs)
             preds = (probs > 0.5).float().cpu().numpy()
             for i in range(len(preds)):
                 idx = batch * test_loader.batch_size + i
-                if idx < len(submission_df):
+                if processed_samples < max_samples:
                     img_name = submission_df.iloc[idx]['image_name']
                     image_names.append(img_name)
-                    # Získání tagů pro predikci
+                    # Getting tags for prediction
                     pred_tags = []
                     for j, val in enumerate(preds[i]):
                         if val == 1:
                             pred_tags.append(unique_tags[j])
-                    predictions.append(' '.join(pred_tags))  
-    # Vytvoření submission dataframe
+                    predictions.append(' '.join(pred_tags))
+                    processed_samples += 1
+    print(f"Processed {processed_samples} samples.")
+    # Creating submission dataframe
     submit_df = pd.DataFrame({'image_name': image_names, 'tags': predictions })
-    # Uložení do CSV
+    # Saving to CSV
     submit_df.to_csv('submission.csv', index=False)
-    print("Submission soubor byl vytvořen!")
+    print("Submission file has been created!")
 
-submission_df['tag_vector'] = [np.zeros(len(unique_tags)) for _ in range(len(submission_df))]
-
-test_dataset = PlanetDataset(submission_df, TEST_DIR, transform=val_transform)
-test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+# loading the test dataset
+filtered_submission_df = submission_df.head(10000)
+filtered_submission_df['tag_vector'] = [np.zeros(len(unique_tags)) for _ in range(len(filtered_submission_df))]
+test_dataset = PlanetDataset(filtered_submission_df, TEST_DIR, transform=val_transform)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 start_time = time.time()
-create_submission(model, test_loader, submission_df)
+create_submission(trained_model, test_loader, max_samples=10000)
 end_time = time.time()
-print(f"Čas pro vytvoření submission pro nejlepší model.: ", end_time - start_time)
+print(f"Time to create submission on test data: ", (end_time - start_time)/60, " minutes, ", (end_time - start_time)/60/60, " hours")
 ```
 
 # Confusion Matrices and Evaluation
@@ -423,10 +468,10 @@ Evaluated the best model using:
     -   Precision
     -   Recall
     -   F1 Score
+      
+<img width="398" height="52" alt="all_tags_confusion_matrix" src="https://github.com/user-attachments/assets/1a7e53cc-7e5f-413b-9dff-c4bdbc6c746b" />
 
-<img width="2280" height="1769" alt="obrazek" src="https://github.com/user-attachments/assets/6bdb26b3-c00c-4c81-bc38-4cc12592c12f" />
-
-<img width="4769" height="3569" alt="obrazek" src="https://github.com/user-attachments/assets/9d277136-5109-4f43-adfb-8741124ba6de" />
+<img width="2306" height="1769" alt="aggregated_confusion_matrix" src="https://github.com/user-attachments/assets/4fc971ac-ff94-421d-bd43-33ca9003705d" />
 
 <img width="1200" height="509" alt="obrazek" src="https://github.com/user-attachments/assets/a4955ee8-d31d-490a-b8cb-135dce9f44dc" />
 
