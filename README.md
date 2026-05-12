@@ -1,21 +1,33 @@
-# Training Model for Geographic Data
-I decided to create a machine learning training model for recognizing
-geographic data as part of a seminar project at USU. The main file of trained model is **train.ipynb** in Jupyter Notebook, where is all code for the classification.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=flat&logo=pytorch&logoColor=white" />
+  <img src="https://img.shields.io/badge/Model-ResNet50-blue?style=flat" />
+  <img src="https://img.shields.io/badge/Task-Multi--Label%20Classification-orange?style=flat" />
+</p>
+
+# Satellite Image Classification for Geographic Data
+**Amazon Rainforest Classification** is a deep learning project focused on multi-label classification of satellite imagery. Using the **Planet: Understanding the Amazon from Space** dataset, the model identifies 17 unique tags covering atmospheric conditions, land cover, and land use.
+
+## Technical Highlights
+Unlike standard image classification, this project implements advanced deep learning techniques:
+- **Custom Normalization:** Mean and Std calculated specifically for this dataset ([0.3117, 0.3408, 0.2991]).
+- **Focal Loss:** Implemented to handle high class imbalance (focusing on "hard" rare samples).
+- **Global Average Pooling (GAP):** Replaced standard pooling to improve spatial robustness and reduce overfitting.
+- **Transfer Learning:** Fine-tuned ResNet50 with custom classification heads and AdamW optimization.
 
 ## Dataset
-I am working with a dataset from Kaggle (planets_dataset), which
-contains approximately 40,000 test images and 40,000 training images of
+The dataset contains approximately 60,000 test images and 40,000 training images of
 Amazon rainforest terrain. It also includes CSV files describing both
 the training and test images.
 
-The dataset contains geographic images taken in the Amazon rainforest,
-along with two CSV files that describe what appears in each image for
-machine learning purposes.
+- Multi-Label: Each image can have multiple tags (e.g., primary, water, agriculture).
+- 17 Unique Tags: Ranging from clear sky to specific land uses like slash_burn or artisinal_mine.
 
 The dataset can be freely used for machine learning under the Database
 Contents License.
 
-Dataset link:
+**Dataset link:**
+
 https://www.kaggle.com/datasets/nikitarom/planets-dataset/data
 
 The root structure of the dataset:
@@ -40,6 +52,25 @@ clear_primary, clear_cloudy_primary, etc.)
 -   Python 3.11
 -   PyTorch
 -   ResNet50
+
+## Model Architecture (ResNet50 + GAP)
+The model utilizes a pre-trained ResNet50 backbone with a custom head optimized for satellite data:
+1. Backbone: ResNet50 (pre-trained on ImageNet).
+2. Pooling: AdaptiveAvgPool2d (Global Average Pooling).
+3. Classifier: - Linear(2048 -> 512) -> BatchNorm -> ReLU -> Dropout(0.2)
+    - Final Linear layer for 17 classes.
+
+## Installation & Usage
+1. Clone the repo:
+```Bash
+git clone [https://github.com/imang212/ML_Satellite_Image_Classification.git](https://github.com/imang212/ML_Satellite_Image_Classification.git)
+```
+2. Install dependencies:
+```Bash
+pip install torch torchvision pandas numpy seaborn matplotlib scikit-learn Pillow
+```
+3. Run the Notebook:
+Open `train.ipynb` in Jupyter or VS Code to see the full training and evaluation process.
 
 ## Data Loading for the Training Model
 ```python
